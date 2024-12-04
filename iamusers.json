@@ -1,1 +1,8 @@
-{"iam_users": []}
+{
+    "users": [
+        "Admin", 
+        "Developer", 
+        "Tester"
+    ]
+}
+  
