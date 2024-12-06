@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 * * * *' # 每小时检查一次 S3 文件
 
 jobs:
   terraform:
@@ -37,3 +39,51 @@ jobs:
 
       - name: Plan Terraform
         run: terraform plan -out=tfplan
+
+  check-s3:
+    name: 'Check S3 Updates'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Check S3 File
+        id: check-s3
+        run: |
+          BUCKET_NAME="onewonder-tfstate"
+          FILE_PATH="github/iamusers.json"
+
+          # 获取 S3 文件的修改时间
+          LAST_MODIFIED=$(aws s3api head-object --bucket $BUCKET_NAME --key $FILE_PATH --query 'LastModified' --output text)
+
+          echo "Last Modified: $LAST_MODIFIED"
+
+          # 检查是否存在记录上次修改时间的文件
+          if [ -f last_modified_state.txt ]; then
+            PREVIOUS=$(cat last_modified_state.txt)
+            echo "Previous Modified: $PREVIOUS"
+            if [ "$LAST_MODIFIED" == "$PREVIOUS" ]; then
+              echo "No updates found."
+              echo "updated=false" >> $GITHUB_ENV
+            else
+              echo "File has been updated."
+              echo $LAST_MODIFIED > last_modified_state.txt
+              echo "updated=true" >> $GITHUB_ENV
+            fi
+          else
+            echo "First-time check, recording current state."
+            echo $LAST_MODIFIED > last_modified_state.txt
+            echo "updated=true" >> $GITHUB_ENV
+          fi
+
+      - name: Trigger Terraform if Updated
+        if: env.updated == 'true'
+        run: |
+          echo "S3 file updated, running Terraform actions..."
+          terraform init
+          terraform validate
+          terraform plan -out=tfplan
