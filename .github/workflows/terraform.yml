@@ -72,13 +72,10 @@ jobs:
           aws-region: ap-northeast-1
 
       - name: Initialize Terraform
-        working-directory: ./terraform
         run: terraform init
 
       - name: Validate Terraform
-        working-directory: ./terraform
         run: terraform validate
 
       - name: Plan Terraform
-        working-directory: ./terraform
         run: terraform plan -out=tfplan
