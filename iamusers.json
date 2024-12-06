@@ -16,22 +16,6 @@
       "policy": "111"
     },
     {
-      "user": "123",
-      "policy": "111"
-    },
-    {
-      "user": "456",
-      "policy": "111"
-    },
-    {
-      "user": "111",
-      "policy": "111"
-    },
-    {
-      "user": "123",
-      "policy": "123"
-    },
-    {
       "user": "TEST",
       "policy": "TEST"
     },
