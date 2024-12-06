@@ -5,12 +5,14 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 * * * *' # 每小时检查一次 S3 文件
+    - cron: '0 * * * *'
 
 jobs:
   check-s3:
     name: 'Check S3 Updates'
     runs-on: ubuntu-latest
+    outputs:
+      s3_updated: ${{ steps.check-s3.outputs.updated }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -19,43 +21,40 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
 
+      - name: Cache Last Modified State
+        uses: actions/cache@v3
+        with:
+          path: last_modified_state.txt
+          key: ${{ runner.os }}-s3-last-modified
+          restore-keys: |
+            ${{ runner.os }}-s3-last-modified
+
       - name: Check S3 File
         id: check-s3
         run: |
           BUCKET_NAME="onewonder-tfstate"
           FILE_PATH="github/iamusers.json"
+
           LAST_MODIFIED=$(aws s3api head-object --bucket $BUCKET_NAME --key $FILE_PATH --query 'LastModified' --output text)
           echo "Last Modified: $LAST_MODIFIED"
 
           if [ -f last_modified_state.txt ]; then
             PREVIOUS=$(cat last_modified_state.txt)
-            echo "Previous Modified: $PREVIOUS"
             if [ "$LAST_MODIFIED" == "$PREVIOUS" ]; then
-              echo "No updates found."
-              echo "updated=false" >> $GITHUB_ENV
+              echo "updated=false" >> $GITHUB_OUTPUT
             else
-              echo "File has been updated."
               echo $LAST_MODIFIED > last_modified_state.txt
-              echo "updated=true" >> $GITHUB_ENV
+              echo "updated=true" >> $GITHUB_OUTPUT
             fi
           else
             echo $LAST_MODIFIED > last_modified_state.txt
-            echo "updated=true" >> $GITHUB_ENV
-          fi
-
-      - name: Save State File
-        if: env.updated == 'true'
-        run: |
-          echo $LAST_MODIFIED > last_modified_state.txt
-          git add last_modified_state.txt
-          git commit -m "Update last_modified_state.txt"
-          git push
+            echo "updated=true" >> $GITHUB_OUTPUT
 
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
     needs: check-s3
-    if: env.updated == 'true'
+    if: ${{ needs.check-s3.outputs.s3_updated == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
