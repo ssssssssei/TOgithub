@@ -49,11 +49,41 @@ jobs:
           else
             echo $LAST_MODIFIED > last_modified_state.txt
             echo "updated=true" >> $GITHUB_OUTPUT
-          fi
+
+  update-github:
+    name: 'Update JSON in GitHub'
+    runs-on: ubuntu-latest
+    needs: check-s3
+    if: ${{ needs.check-s3.outputs.s3_updated == 'true' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Download JSON from S3
+        run: |
+          BUCKET_NAME="onewonder-tfstate"
+          FILE_PATH="github/iamusers.json"
+          aws s3 cp s3://$BUCKET_NAME/$FILE_PATH ./iamusers.json
+
+      - name: Commit and Push Updated JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add iamusers.json
+          git commit -m "Update iamusers.json from S3"
+          git push
+
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    needs: check-s3
+    needs: update-github
     if: ${{ needs.check-s3.outputs.s3_updated == 'true' }}
     steps:
       - name: Checkout repository
