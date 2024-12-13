@@ -53,7 +53,6 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
           
-
   update-github:
     name: 'Update JSON in GitHub'
     runs-on: ubuntu-latest
