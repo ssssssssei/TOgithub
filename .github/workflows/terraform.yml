@@ -34,10 +34,12 @@ jobs:
         run: |
           BUCKET_NAME="onewonder-tfstate"
           FILE_PATH="github/iamusers.json"
-
+      
+          # 获取文件的最后修改时间
           LAST_MODIFIED=$(aws s3api head-object --bucket $BUCKET_NAME --key $FILE_PATH --query 'LastModified' --output text)
           echo "Last Modified: $LAST_MODIFIED"
-
+      
+          # 检查是否存在缓存的 last_modified_state.txt 文件
           if [ -f last_modified_state.txt ]; then
             PREVIOUS=$(cat last_modified_state.txt)
             if [ "$LAST_MODIFIED" == "$PREVIOUS" ]; then
@@ -49,6 +51,8 @@ jobs:
           else
             echo $LAST_MODIFIED > last_modified_state.txt
             echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+          
 
   update-github:
     name: 'Update JSON in GitHub'
