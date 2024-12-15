@@ -52,7 +52,7 @@ jobs:
             echo $LAST_MODIFIED > last_modified_state.txt
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
-          
+
   update-github:
     name: 'Update JSON in GitHub'
     runs-on: ubuntu-latest
@@ -80,8 +80,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add iamusers.json
-          git commit -m "Update iamusers.json from S3"
-          git push
+
+          # 判断文件是否有变化，防止 job 失败
+          git diff --cached --exit-code || git commit -m "Update iamusers.json from S3" && git push
 
   terraform:
     name: 'Terraform'
