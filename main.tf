@@ -1,5 +1,5 @@
 resource "aws_iam_user" "db_users" {
-  for_each = { for user in local.users_data : user["IAMユーザー"] => user }
+  for_each = { for user in local.users : user["IAMユーザー"] => user }
 
   name = each.key
 
